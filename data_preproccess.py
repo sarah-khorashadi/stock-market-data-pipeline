@@ -8,8 +8,10 @@ from process_tools import read_stockList_file, download_data, process_stock_data
 index_as_node = True
 
 file_name = input("Enter the name of the text file: ")  
-start_date = input("Enter start_date (e.g 2011-01-01)")
-end_date = input("Enter end_date (e.g 2021-01-01)")
+start_date = input("Enter start_date (e.g 2022-06-01)") #1401-06-01 
+start_date = pd.to_datetime(start_date)
+end_date = input("Enter end_date (e.g 2023-12-15)")     #1402-09-30 
+end_date = pd.to_datetime(end_date)
 
 
 root_data = './data/'
@@ -29,14 +31,14 @@ list_of_stocks = read_stockList_file(file_name)
 #fourier = 3 
 labeling_method = 1
 
-# download_data(list_of_stocks, start_date, end_date, stock_path_to_save_raw)
-# process_stock_data(stock_path_to_save_raw,path_to_save_processed, labeling_method) #labeling method = 0 (up-down) 1 (ma with the window of 5)
+download_data(list_of_stocks, start_date, end_date, stock_path_to_save_raw)
+process_stock_data(stock_path_to_save_raw,path_to_save_processed, labeling_method) #labeling method = 0 (up-down) 1 (ma with the window of 5)
 
 # download_index(start_date, end_date,index_path_to_save_raw)
 # process_index_data(index_path_to_save_raw,index_path_to_save_processed, labeling_method)
 
 download_individual_corporate(list_of_stocks, start_date, end_date)
-process_individual_corporate(list_of_stocks,indCor_to_save_raw,indCor_to_save_process)
+process_individual_corporate(list_of_stocks,indCor_to_save_raw,indCor_to_save_process, start_date, end_date)
 
 merge_IndCor_datas(path_to_save_processed, indCor_to_save_process, merge_IndCor_datas_path)
 # merge_IndCor_datas_index(list_of_stocks, merge_IndCor_datas_path, index_path_to_save_processed, merge_IndCor_datas_path_index)

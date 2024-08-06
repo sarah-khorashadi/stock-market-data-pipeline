@@ -22,12 +22,29 @@ def read_stockList_file(file_name):
         print(f"File '{file_name}' not found.")
 
 iran_stock_holidays = [
-    '2023-03-04',
-    '2023-03-11',
-    '2023-03-18',
-    '2023-04-08',
-    '2023-04-20',
-    '2023-04-21',
+    
+    '2022-06-04',
+    '2022-06-05',
+    '2022-07-10',
+    '2022-07-18',
+    '2022-08-07',
+    '2022-08-08',
+    '2022-09-17',
+    '2022-09-25',
+    '2022-09-27',
+    '2022-10-05',
+    '2022-12-27',
+    '2023-02-04',
+    '2023-02-11',
+    '2023-02-18',
+    '2023-03-08',
+    '2023-03-20',
+    '2023-03-21',
+    '2023-03-22',
+    '2023-04-01',
+    '2023-04-02',
+    '2023-04-12',
+    '2023-04-22',
     '2023-04-23',
     '2023-05-16',
     '2023-06-04',
@@ -52,15 +69,15 @@ def download_data(list_of_stocks, start_date, end_date, path_to_save):
     for stock in list_of_stocks:
         data = fpy.Get_Price_History(
             stock=stock,
-            start_date=start_date,
-            end_date=end_date,
+            start_date = str(JalaliDate.to_jalali(start_date)),
+            end_date= str(JalaliDate.to_jalali(end_date)),
             ignore_date=False,
             adjust_price=False,
             show_weekday=False,
             double_date=True)
         data.reset_index(drop=False, inplace=True)
         # Create a complete date range excluding holidays and weekends
-        complete_date_range = pd.date_range(start= pd.to_datetime('2023-01-21'), end= pd.to_datetime('2023-12-15'), freq='D')
+        complete_date_range = pd.date_range(start= start_date, end= end_date, freq='D')
         complete_date_range = [date for date in complete_date_range if not is_holiday(date)]
 
         data = data.set_index('Date')
@@ -89,7 +106,7 @@ def process_stock_data(path_to_save_raw,path_to_save,labeling_method):
             data['low_rate'] = (data['Low'] - data['Final_yes']) / data['Final_yes']
             data["open_rate"] = (data["Open"] - data["Final_yes"]) / data["Final_yes"]
             data['earning_rate'] = (data['Close'] - data['Final_yes']) / data['Final_yes']
-            data['Volume'] = StandardScaler().fit_transform(data[['Volume']]).flatten()
+            data['Volume_rate'] = StandardScaler().fit_transform(data[['Volume']]).flatten()
             close_prices = np.array(data["Close"])
             yf = fft(close_prices)
             yf[100:] = 0
@@ -276,7 +293,7 @@ def process_index_data(folder_path, path_to_save, labeling_method):
             data['low_rate'] = (data['Low'] - data['Final_yes']) / data['Final_yes']
             data["open_rate"] = (data["Open"] - data["Final_yes"]) / data["Final_yes"]
             data['earning_rate'] = (data['Close'] - data['Final_yes']) / data['Final_yes']
-            data['Volume'] = StandardScaler().fit_transform(data[['Volume']]).flatten()
+            data['Volume_rate'] = StandardScaler().fit_transform(data[['Volume']]).flatten()
 
             # create labels
             if labeling_method==0:
@@ -304,7 +321,7 @@ def convert_to_jalali(gregorian_date):
     except ValueError:
         return None  # Handle invalid dates by returning None
 
-def process_individual_corporate(list_of_stocks, indCor_to_save_raw, indCor_to_save_process):
+def process_individual_corporate(list_of_stocks, indCor_to_save_raw, indCor_to_save_process, start_date, end_date):
     scaler = StandardScaler()
     print(list_of_stocks)
     for stock in list_of_stocks:
@@ -313,8 +330,6 @@ def process_individual_corporate(list_of_stocks, indCor_to_save_raw, indCor_to_s
             data = pd.read_csv(file_path)
             # Specify the date range
             data['date'] = pd.to_datetime(data['date'])
-            start_date = pd.to_datetime('2023-01-21')
-            end_date = pd.to_datetime('2023-12-15')
             data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
             data.rename(columns={'date': 'Date'}, inplace=True)
             data.drop(columns=['Unnamed: 0'], inplace=True)
@@ -323,7 +338,7 @@ def process_individual_corporate(list_of_stocks, indCor_to_save_raw, indCor_to_s
             columns_to_normalize = ['individual_buy_count','corporate_buy_count','individual_sell_count','corporate_sell_count','individual_buy_vol','corporate_buy_vol','individual_sell_vol','corporate_sell_vol','individual_buy_value','corporate_buy_value','individual_sell_value','corporate_sell_value','individual_buy_mean_price','individual_sell_mean_price','corporate_buy_mean_price','corporate_sell_mean_price','individual_ownership_change']
             data[columns_to_normalize] = scaler.fit_transform(data[columns_to_normalize])
             # Rename columns
-            complete_date_range = pd.date_range(start=pd.to_datetime('2023-01-21'), end= pd.to_datetime('2023-12-15'), freq='D')
+            complete_date_range = pd.date_range(start=start_date, end= end_date, freq='D')
             complete_date_range = [date for date in complete_date_range if not is_holiday(date)]
             data = data.set_index('Date')
             data = data.reindex(complete_date_range)
