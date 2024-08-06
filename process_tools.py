@@ -22,12 +22,12 @@ def read_stockList_file(file_name):
         print(f"File '{file_name}' not found.")
 
 iran_stock_holidays = [
-    '2023-03-04',  # Nowruz (Persian New Year)
-    '2023-03-11',  # Nowruz (Persian New Year)
-    '2023-03-18',  # Nowruz (Persian New Year)
-    '2023-04-08',  # Nowruz (Persian New Year)
-    '2023-04-20',  # Nowruz (Persian New Year)
-    '2023-04-21',  # Nowruz (Persian New Year)
+    '2023-03-04',
+    '2023-03-11',
+    '2023-03-18',
+    '2023-04-08',
+    '2023-04-20',
+    '2023-04-21',
     '2023-04-23',
     '2023-05-16',
     '2023-06-04',
@@ -48,7 +48,6 @@ print('iran_stock_holidays',iran_stock_holidays)
 def is_holiday(date):
     return date in iran_stock_holidays or date.weekday() in [3, 4]  # 3 and 4 correspond to Thursday and Friday in jdatetime
 
-
 def download_data(list_of_stocks, start_date, end_date, path_to_save):
     for stock in list_of_stocks:
         data = fpy.Get_Price_History(
@@ -60,22 +59,20 @@ def download_data(list_of_stocks, start_date, end_date, path_to_save):
             show_weekday=False,
             double_date=True)
         data.reset_index(drop=False, inplace=True)
-        print(data)
         # Create a complete date range excluding holidays and weekends
-        complete_date_range = pd.date_range(start=data['Date'].min(), end=data['Date'].max(), freq='D')
+        complete_date_range = pd.date_range(start= pd.to_datetime('2023-01-21'), end= pd.to_datetime('2023-12-15'), freq='D')
         complete_date_range = [date for date in complete_date_range if not is_holiday(date)]
-        print(complete_date_range)
 
         data = data.set_index('Date')
         data = data.reindex(complete_date_range)
-        print('+++++',data)
         data.ffill(inplace=True)
+        data.bfill(inplace=True)
+
         if os.path.exists(path_to_save):
-            print('folder exists')
-            data.to_csv(path_to_save + stock + '.csv', index_label='J-Date')
+            data.to_csv(path_to_save + stock + '.csv', index_label='Date')
         else:
             os.makedirs(os.path.join('data', 'raw_data', 'stocks'))
-            data.to_csv(path_to_save + stock + '.csv', index_label='J-Date')
+            data.to_csv(path_to_save + stock + '.csv', index_label='Date')
 
 def process_stock_data(path_to_save_raw,path_to_save,labeling_method):
     for filename in os.listdir(path_to_save_raw):
@@ -101,7 +98,7 @@ def process_stock_data(path_to_save_raw,path_to_save,labeling_method):
             if labeling_method==0:
                 data['label'] = data["earning_rate"].shift(-1).apply(lambda x: 1 if x > 0 else 0)
             elif labeling_method==1:
-                data['MovingAverage'] = data['Close'].rolling(window=3, min_periods=1, center=True).mean()
+                data['MovingAverage'] = data['Close'].rolling(window=7, min_periods=1, center=True).mean()
                 data['diff_MovingAvrage'] =  data['MovingAverage'].shift(-1)-data['MovingAverage']
                 data['label'] = data['diff_MovingAvrage'].apply(lambda x: 1 if x > 0 else 0)
                 data = data.drop(columns=['MovingAverage','diff_MovingAvrage'])
@@ -116,7 +113,6 @@ def process_stock_data(path_to_save_raw,path_to_save,labeling_method):
                     print(data.columns)
                     data['label'] = data['roc'].apply(lambda x: 1 if x > 0 else 0)
                 # Print the modified DataFrame
-                print(data)
             elif labeling_method==3:
                 data['diff_smooth-close'] =  data['smooth-close'].shift(-1)-data['smooth-close']
                 data['label'] = data['diff_smooth-close'].apply(lambda x: 1 if x > 0 else 0)
@@ -124,8 +120,16 @@ def process_stock_data(path_to_save_raw,path_to_save,labeling_method):
 
 
         # data = data.drop(columns=['Open','High','Close','Low','Final','Final_yes'])
-        data = data.dropna()
-        data.to_csv(path_to_save+filename, index=False)
+        print(data['label'])
+        data.ffill(inplace=True)
+        data.bfill(inplace=True)
+
+        if os.path.exists(path_to_save):
+            print('folder exists')
+            data.to_csv(path_to_save+filename, index=False)
+        else:
+            os.makedirs(os.path.join('data', 'processed_data', 'stocks'))
+            data.to_csv(path_to_save+filename, index=False)
 
 def save_to_csv_alltogether(merge_IndCor_datas_path_index,root_data):
     for filename in os.listdir(merge_IndCor_datas_path_index):
@@ -309,8 +313,8 @@ def process_individual_corporate(list_of_stocks, indCor_to_save_raw, indCor_to_s
             data = pd.read_csv(file_path)
             # Specify the date range
             data['date'] = pd.to_datetime(data['date'])
-            start_date = pd.to_datetime('2018-12-15')
-            end_date = pd.to_datetime('2023-12-13')
+            start_date = pd.to_datetime('2023-01-21')
+            end_date = pd.to_datetime('2023-12-15')
             data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
             data.rename(columns={'date': 'Date'}, inplace=True)
             data.drop(columns=['Unnamed: 0'], inplace=True)
@@ -319,14 +323,20 @@ def process_individual_corporate(list_of_stocks, indCor_to_save_raw, indCor_to_s
             columns_to_normalize = ['individual_buy_count','corporate_buy_count','individual_sell_count','corporate_sell_count','individual_buy_vol','corporate_buy_vol','individual_sell_vol','corporate_sell_vol','individual_buy_value','corporate_buy_value','individual_sell_value','corporate_sell_value','individual_buy_mean_price','individual_sell_mean_price','corporate_buy_mean_price','corporate_sell_mean_price','individual_ownership_change']
             data[columns_to_normalize] = scaler.fit_transform(data[columns_to_normalize])
             # Rename columns
-            complete_date_range = pd.date_range(start=data['Date'].min(), end=data['Date'].max(), freq='D')
+            complete_date_range = pd.date_range(start=pd.to_datetime('2023-01-21'), end= pd.to_datetime('2023-12-15'), freq='D')
+            complete_date_range = [date for date in complete_date_range if not is_holiday(date)]
             data = data.set_index('Date')
             data = data.reindex(complete_date_range)
             data.ffill(inplace=True)
             data.bfill(inplace=True)
-            data.to_csv(indCor_to_save_process+stock +'.csv', index_label='Date', index=True)
+            if os.path.exists(indCor_to_save_process):
+                print('folder exists')
+                data.to_csv(indCor_to_save_process+stock +'.csv', index_label='Date', index=True)
+            else:
+                os.makedirs(os.path.join('data', 'processed_data', 'indCor'))
+                data.to_csv(indCor_to_save_process+stock +'.csv', index_label='Date', index=True)
 
-def merge_IndCor_datas(stock_list, sotck_data_path, indCor_data_path,merge_IndCor_datas_path):
+def merge_IndCor_datas(sotck_data_path, indCor_data_path,merge_IndCor_datas_path):
     stock_path = []
     indcor_path = []
     for filename in os.listdir(indCor_data_path):
@@ -343,8 +353,13 @@ def merge_IndCor_datas(stock_list, sotck_data_path, indCor_data_path,merge_IndCo
             
             merged_df = pd.merge(stock_data, indCor_data, on='Date', how='inner')
             merged_df.ffill(inplace=True)
+            if os.path.exists(merge_IndCor_datas_path):
+                print('folder exists')
+                merged_df.to_csv(merge_IndCor_datas_path+filename)
+            else:
+                os.makedirs(os.path.join('data', 'processed_data', 'stock_with_indcor'))
+                merged_df.to_csv(merge_IndCor_datas_path+filename)
             
-            merged_df.to_csv(merge_IndCor_datas_path+filename)
 
 def merge_IndCor_datas_index(list_of_stocks, merge_IndCor_datas_path, index_path_to_save_processed, merge_IndCor_datas_path_index):
     for stock in list_of_stocks:
